@@ -1,5 +1,28 @@
-venv/
+# Python
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Env
 .env
+.env.*
+
+# uv
+.python-version
+
+# ML
 mlruns/
+mlartifacts/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

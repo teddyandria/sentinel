@@ -1,11 +1,16 @@
+import uvicorn
 from fastapi import FastAPI
 import requests
 from datetime import date, timedelta
 from .config import settings
 
 
-
 app = FastAPI()
+
+
+def start():
+    uvicorn.run("src.app.main:app", host="0.0.0.0", port=8000, reload=True)
+    
 @app.get("/")
 async def read_root():
     from_date = (date.today() - timedelta(days=7)).isoformat()
