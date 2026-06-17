@@ -1,0 +1,9 @@
+# Tout ce qui est inutile dans le contexte de build Docker (contexte = racine).
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+backend/bin/
+**/*.md
+.agents/

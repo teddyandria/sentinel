@@ -1,0 +1,34 @@
+* {
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+header {
+    padding: 1rem;
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+header h1 {
+    font-size: 1.25rem;
+}
+
+header p {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+/* La carte occupe tout l'espace restant sous le header. */
+#map {
+    height: calc(100vh - 72px);
+    width: 100%;
+}
+
+.map-error {
+    padding: 1rem;
+    color: #b91c1c;
+}

@@ -1,28 +1,18 @@
-# Python
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-dist/
-build/
-.eggs/
+# Binaires & artefacts de build
+/bin/
+*.exe
+*.test
+*.out
 
-# Env
+# Environnement & secrets (on versionne uniquement .env.example)
 .env
 .env.*
+!.env.example
 
-# uv
-.python-version
+# Go
+/vendor/
 
-# ML
-mlruns/
-mlartifacts/
-
-# OS
+# OS / IDE
 .DS_Store
-
-# IDE
 .vscode/
 .idea/
