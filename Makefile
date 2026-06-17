@@ -7,17 +7,27 @@
 -include .env
 export
 
-BACKEND := backend
-BINARY  := bin/sentinel
+BACKEND  := backend
+FRONTEND := frontend
+BINARY   := bin/sentinel
 
-.PHONY: help run build test lint tidy docker-up docker-down clean
+.PHONY: help run front front-install front-build build test lint tidy docker-up docker-down clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-run: ## Lance l'application en local (sert aussi le front depuis ../frontend)
+run: ## Lance le backend (API + sert le front buildé depuis frontend/dist)
 	cd $(BACKEND) && go run ./cmd/sentinel
+
+front-install: ## Installe les dépendances npm du frontend
+	cd $(FRONTEND) && npm install
+
+front: ## Lance le frontend en dev (Vite, http://localhost:5173, proxy /api -> :8080)
+	cd $(FRONTEND) && npm run dev
+
+front-build: ## Build le frontend dans frontend/dist
+	cd $(FRONTEND) && npm run build
 
 build: ## Compile le binaire dans backend/bin/
 	cd $(BACKEND) && go build -o $(BINARY) ./cmd/sentinel
@@ -38,8 +48,8 @@ docker-up: ## Démarre Postgres + app via docker-compose
 docker-down: ## Arrête et supprime les conteneurs
 	docker compose down
 
-clean: ## Supprime les artefacts de build
-	rm -rf $(BACKEND)/bin/
+clean: ## Supprime les artefacts de build (binaire + dist front)
+	rm -rf $(BACKEND)/bin/ $(FRONTEND)/dist/
 
 # Cible par défaut : l'aide.
 .DEFAULT_GOAL := help

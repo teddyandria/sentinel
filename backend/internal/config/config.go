@@ -29,8 +29,8 @@ func Load() (Config, error) {
 		NewsAPIKey:    getEnv("NEWS_API_KEY", ""),
 		LogLevel:      getEnv("LOG_LEVEL", "info"),
 		FetchInterval: getEnvDuration("FETCH_INTERVAL", 30*time.Minute),
-		// En conteneur, on surcharge via WEB_DIR (ex: /app/frontend).
-		WebDir:      getEnv("WEB_DIR", "../frontend"),
+		// Front buildé par Vite. En conteneur, on surcharge via WEB_DIR (ex: /app/web).
+		WebDir:      getEnv("WEB_DIR", "../frontend/dist"),
 		MapboxToken: getEnv("MAPBOX_TOKEN", ""),
 	}
 

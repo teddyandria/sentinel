@@ -12,6 +12,10 @@
 # Go
 /vendor/
 
+# Frontend (Node)
+frontend/node_modules/
+frontend/dist/
+
 # OS / IDE
 .DS_Store
 .vscode/

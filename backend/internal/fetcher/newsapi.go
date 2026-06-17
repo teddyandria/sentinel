@@ -10,22 +10,24 @@ import (
 	"github.com/teddyandria/sentinel/pkg/newsapi"
 )
 
+// NewsAPIFetcher est une source = un fournisseur (NewsAPI) + un topic. Chaque
+// instance ne récupère que les articles de son topic et les tague en conséquence.
 type NewsAPIFetcher struct {
 	client *newsapi.Client
-	query  string
+	topic  string
 	log    *slog.Logger
 }
 
-func NewNewsAPIFetcher(client *newsapi.Client, query string, log *slog.Logger) *NewsAPIFetcher {
-	return &NewsAPIFetcher{client: client, query: query, log: log}
+func NewNewsAPIFetcher(client *newsapi.Client, topic string, log *slog.Logger) *NewsAPIFetcher {
+	return &NewsAPIFetcher{client: client, topic: topic, log: log}
 }
 
-// Fetch interroge NewsAPI, ignore les articles inexploitables (sans titre/URL)
-// et calcule un Hash par article pour la déduplication.
+// Fetch interroge NewsAPI pour le topic, ignore les articles inexploitables
+// (sans titre/URL), les tague avec le topic et calcule un Hash pour la déduplication.
 func (f *NewsAPIFetcher) Fetch(ctx context.Context) ([]domain.Article, error) {
-	f.log.Debug("fetch NewsAPI", "query", f.query)
+	f.log.Debug("fetch NewsAPI", "topic", f.topic)
 
-	raw, err := f.client.Everything(ctx, f.query)
+	raw, err := f.client.Everything(ctx, f.topic)
 	if err != nil {
 		return nil, err
 	}
@@ -39,13 +41,15 @@ func (f *NewsAPIFetcher) Fetch(ctx context.Context) ([]domain.Article, error) {
 			Title:       r.Title,
 			Description: r.Description,
 			URL:         r.URL,
+			ImageURL:    r.ImageURL,
 			Source:      r.Source.Name,
+			Topic:       f.topic,
 			PublishedAt: r.PublishedAt,
 			Hash:        hashURL(r.URL),
 		})
 	}
 
-	f.log.Info("articles récupérés", "source", "newsapi", "count", len(articles))
+	f.log.Info("articles récupérés", "source", "newsapi", "topic", f.topic, "count", len(articles))
 	return articles, nil
 }
 

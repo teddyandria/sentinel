@@ -11,40 +11,46 @@ import (
 )
 
 type Pipeline struct {
-	fetcher  fetcher.Fetcher
+	fetchers []fetcher.Fetcher
 	geocoder geocoder.Geocoder
 	store    storage.Store
 	log      *slog.Logger
 }
 
-func New(f fetcher.Fetcher, g geocoder.Geocoder, s storage.Store, log *slog.Logger) *Pipeline {
-	return &Pipeline{fetcher: f, geocoder: g, store: s, log: log}
+func New(fetchers []fetcher.Fetcher, g geocoder.Geocoder, s storage.Store, log *slog.Logger) *Pipeline {
+	return &Pipeline{fetchers: fetchers, geocoder: g, store: s, log: log}
 }
 
-// Run exécute une passe d'ingestion. Une erreur sur un article n'interrompt pas les autres.
+// Run exécute une passe d'ingestion sur toutes les sources. Une source ou un
+// article en erreur n'interrompt pas le reste du traitement.
 func (p *Pipeline) Run(ctx context.Context) error {
-	articles, err := p.fetcher.Fetch(ctx)
-	if err != nil {
-		return err
-	}
+	var received, saved, geocoded int
 
-	var saved, geocoded int
-	for _, a := range articles {
-		loc, err := p.geocoder.Geocode(ctx, a.Title+" "+a.Description)
+	for _, f := range p.fetchers {
+		articles, err := f.Fetch(ctx)
 		if err != nil {
-			p.log.Warn("géocodage échoué", "url", a.URL, "err", err)
-		} else if loc != nil {
-			a.Location = loc
-			geocoded++
-		}
-
-		if err := p.store.Save(ctx, a); err != nil {
-			p.log.Error("sauvegarde échouée", "url", a.URL, "err", err)
+			p.log.Error("fetch d'une source échoué", "err", err)
 			continue
 		}
-		saved++
+		received += len(articles)
+
+		for _, a := range articles {
+			loc, err := p.geocoder.Geocode(ctx, a.Title+" "+a.Description)
+			if err != nil {
+				p.log.Warn("géocodage échoué", "url", a.URL, "err", err)
+			} else if loc != nil {
+				a.Location = loc
+				geocoded++
+			}
+
+			if err := p.store.Save(ctx, a); err != nil {
+				p.log.Error("sauvegarde échouée", "url", a.URL, "err", err)
+				continue
+			}
+			saved++
+		}
 	}
 
-	p.log.Info("ingestion terminée", "recus", len(articles), "sauves", saved, "geolocalises", geocoded)
+	p.log.Info("ingestion terminée", "recus", received, "sauves", saved, "geolocalises", geocoded)
 	return nil
 }

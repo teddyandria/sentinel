@@ -34,7 +34,7 @@ un clic = redirection vers la source.
 | Config | **env vars + godotenv** | 12-factor, explicite, léger (vs Viper) |
 | Base de données | **PostgreSQL** via **pgx/v5** | Driver natif performant, API moderne |
 | Scheduler | **`time.Ticker`** (stdlib) | Suffisant pour une période fixe |
-| Frontend | **HTML/JS vanilla + Mapbox GL JS** | Pas de build step, carte vectorielle WebGL fluide |
+| Frontend | **React + Vite + react-map-gl + Framer Motion** | SPA buildée en statique (servie par Go), carte fluide, animations propres |
 | Conteneurisation | **Docker + docker-compose** | Environnement reproductible |
 
 ---
@@ -63,10 +63,14 @@ sentinel/
 │   ├── migrations/             # Schéma SQL (joué au 1er démarrage de Postgres)
 │   ├── Dockerfile              # Build multi-stage, image finale légère
 │   └── go.mod
-├── frontend/                   # Carte interactive (statique)
+├── frontend/                   # App React + Vite (carte interactive)
+│   ├── src/
+│   │   ├── App.tsx             # état (token, topics, articles) + layout
+│   │   ├── api.ts              # types + appels à l'API Sentinel
+│   │   └── components/         # MapView (react-map-gl), FilterBar, ArticleCard
 │   ├── index.html
-│   ├── app.js                  # Charge /api/config + /api/articles, marqueurs Mapbox
-│   └── style.css
+│   ├── vite.config.ts         # proxy /api -> :8080 en dev
+│   └── package.json
 ├── docker-compose.yml          # Postgres + app
 ├── Makefile                    # run, build, test, lint, docker-up...
 ├── .env.example                # Modèle de configuration
@@ -91,6 +95,7 @@ ce qui permet de la mocker en test et d'en changer l'implémentation sans touche
 
 ### Prérequis
 - [Go 1.26+](https://go.dev/dl/)
+- [Node 20+](https://nodejs.org/) (pour le frontend)
 - [Docker](https://www.docker.com/) + Docker Compose
 - Une clé [NewsAPI](https://newsapi.org) (gratuite)
 - Un token public [Mapbox](https://account.mapbox.com) (`pk.*`, gratuit) pour la carte
@@ -111,12 +116,17 @@ make docker-up      # démarre Postgres + l'application
 make docker-down    # arrêt
 ```
 
-### 3. Lancer en local (sans conteneuriser l'app)
-Il faut un Postgres accessible (ex: `make docker-up` ne lançant que `db`, ou un Postgres local)
-puis :
+### 3. Développer en local (hot-reload front)
+Il faut un Postgres accessible (ex: `docker compose up -d db`). Puis, dans deux terminaux :
 ```bash
-make run            # exécute le backend, sert le front depuis ../frontend
+make front-install   # une seule fois : installe les deps npm
+make run             # terminal 1 : backend + API sur :8080
+make front           # terminal 2 : Vite (hot-reload) sur :5173, proxy /api -> :8080
 ```
+→ ouvre **http://localhost:5173** (le front en dev tape l'API via le proxy).
+
+Pour servir le front *buildé* directement par Go (sans Vite) : `make front-build` puis `make run`,
+et ouvre http://localhost:8080.
 
 ---
 
@@ -126,7 +136,8 @@ make run            # exécute le backend, sert le front depuis ../frontend
 |---|---|---|
 | `GET` | `/api/health` | Sonde de vivacité (`{"status":"ok"}`) |
 | `GET` | `/api/config` | Config publique du front (`{"mapboxToken":"..."}`) |
-| `GET` | `/api/articles` | Liste des articles géolocalisés (JSON) |
+| `GET` | `/api/topics` | Sujets de veille disponibles (`["technology",...]`) |
+| `GET` | `/api/articles` | Articles géolocalisés ; filtre optionnel `?topic=health` |
 | `GET` | `/*` | Frontend statique (carte Mapbox) |
 
 Exemple de réponse `/api/articles` :

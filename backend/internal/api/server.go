@@ -32,6 +32,7 @@ func (s *Server) Routes(webDir string) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", s.handleHealth)
 		r.Get("/config", s.handleConfig)
+		r.Get("/topics", s.handleTopics)
 		r.Get("/articles", s.handleListArticles)
 	})
 

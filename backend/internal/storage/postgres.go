@@ -37,25 +37,30 @@ func (s *PostgresStore) Save(ctx context.Context, a domain.Article) error {
 	}
 
 	const q = `
-		INSERT INTO articles (title, description, url, source, published_at, location_name, lat, lon, hash)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO articles (title, description, url, image_url, source, topic, published_at, location_name, lat, lon, hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (hash) DO NOTHING`
 
 	_, err := s.pool.Exec(ctx, q,
-		a.Title, a.Description, a.URL, a.Source, a.PublishedAt, locName, lat, lon, a.Hash,
+		a.Title, a.Description, a.URL, a.ImageURL, a.Source, a.Topic, a.PublishedAt, locName, lat, lon, a.Hash,
 	)
 	return err
 }
 
-func (s *PostgresStore) ListGeolocated(ctx context.Context) ([]domain.Article, error) {
-	const q = `
-		SELECT id, title, description, url, source, published_at, location_name, lat, lon
+func (s *PostgresStore) ListGeolocated(ctx context.Context, topic string) ([]domain.Article, error) {
+	// Requête construite dynamiquement : le filtre topic est optionnel.
+	q := `
+		SELECT id, title, description, url, image_url, source, topic, published_at, location_name, lat, lon
 		FROM articles
-		WHERE lat IS NOT NULL AND lon IS NOT NULL
-		ORDER BY published_at DESC
-		LIMIT 500`
+		WHERE lat IS NOT NULL AND lon IS NOT NULL`
+	var args []any
+	if topic != "" {
+		q += " AND topic = $1"
+		args = append(args, topic)
+	}
+	q += " ORDER BY published_at DESC LIMIT 500"
 
-	rows, err := s.pool.Query(ctx, q)
+	rows, err := s.pool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,17 +70,20 @@ func (s *PostgresStore) ListGeolocated(ctx context.Context) ([]domain.Article, e
 	for rows.Next() {
 		var a domain.Article
 		// Colonnes nullables scannées dans des pointeurs.
-		var description, source, locName *string
+		var description, imageURL, source, locName *string
 		var lat, lon *float64
 
 		if err := rows.Scan(
-			&a.ID, &a.Title, &description, &a.URL, &source, &a.PublishedAt, &locName, &lat, &lon,
+			&a.ID, &a.Title, &description, &a.URL, &imageURL, &source, &a.Topic, &a.PublishedAt, &locName, &lat, &lon,
 		); err != nil {
 			return nil, err
 		}
 
 		if description != nil {
 			a.Description = *description
+		}
+		if imageURL != nil {
+			a.ImageURL = *imageURL
 		}
 		if source != nil {
 			a.Source = *source

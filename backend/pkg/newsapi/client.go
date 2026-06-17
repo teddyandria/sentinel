@@ -32,6 +32,7 @@ type Article struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
+	ImageURL    string    `json:"urlToImage"`
 	PublishedAt time.Time `json:"publishedAt"`
 	Source      struct {
 		Name string `json:"name"`

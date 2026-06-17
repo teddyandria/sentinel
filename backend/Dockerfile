@@ -1,38 +1,39 @@
 # Image construite depuis la RACINE du repo (contexte de build = .) afin d'avoir
-# accès à la fois à backend/ (code Go) et frontend/ (fichiers statiques).
+# accès à backend/ (code Go) et frontend/ (source React/Vite).
 # Voir docker-compose.yml : context: . / dockerfile: backend/Dockerfile
 
-# --- Étape 1 : build ---
-# Image Go complète, uniquement pour compiler. Elle ne se retrouve pas dans l'image finale.
-FROM golang:1.26-alpine AS build
+# --- Étape 1 : build du frontend (Node + Vite) ---
+FROM node:22-alpine AS web
+WORKDIR /web
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build   # produit /web/dist
 
+# --- Étape 2 : build du backend (Go) ---
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 
-# On copie d'abord go.mod/go.sum pour profiter du cache Docker :
-# tant que les dépendances ne changent pas, cette couche est réutilisée.
+# go.mod/go.sum d'abord pour profiter du cache Docker.
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-# Puis le reste du code backend.
 COPY backend/ ./
 
-# CGO_ENABLED=0 -> binaire statique, exécutable dans une image minimale.
-# -ldflags "-s -w" retire les infos de debug pour alléger le binaire.
+# Binaire statique, exécutable dans une image minimale.
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/sentinel ./cmd/sentinel
 
-# --- Étape 2 : image finale ---
-# Image légère : seulement le binaire, les certificats CA (HTTPS sortant vers NewsAPI)
-# et le frontend statique.
+# --- Étape 3 : image finale ---
 FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 COPY --from=build /bin/sentinel /app/sentinel
-COPY frontend /app/frontend
+COPY --from=web /web/dist /app/web
 
-# Le binaire sert les fichiers statiques depuis ce dossier (voir WEB_DIR).
-ENV WEB_DIR=/app/frontend
+# Le binaire sert le frontend buildé depuis ce dossier.
+ENV WEB_DIR=/app/web
 
 EXPOSE 8080
 ENTRYPOINT ["/app/sentinel"]

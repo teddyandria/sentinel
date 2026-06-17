@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS articles (
     title         TEXT        NOT NULL,
     description   TEXT,
     url           TEXT        NOT NULL,
+    image_url     TEXT,
     source        TEXT,
+    topic         TEXT        NOT NULL DEFAULT '',
     published_at  TIMESTAMPTZ,
 
     -- Coordonnées (NULL tant que l'article n'a pas été géocodé).
@@ -18,8 +20,8 @@ CREATE TABLE IF NOT EXISTS articles (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Index dédié à la requête principale de la carte :
--- les articles géolocalisés, du plus récent au plus ancien.
-CREATE INDEX IF NOT EXISTS idx_articles_geo
-    ON articles (published_at DESC)
+-- Index dédié à la requête principale de la carte : articles géolocalisés,
+-- filtrés par topic, du plus récent au plus ancien.
+CREATE INDEX IF NOT EXISTS idx_articles_topic_geo
+    ON articles (topic, published_at DESC)
     WHERE lat IS NOT NULL AND lon IS NOT NULL;

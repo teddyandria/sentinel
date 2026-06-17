@@ -11,6 +11,7 @@ import (
 type Store interface {
 	// Save insère un article ; la déduplication se fait via Article.Hash.
 	Save(ctx context.Context, a domain.Article) error
-	ListGeolocated(ctx context.Context) ([]domain.Article, error)
+	// ListGeolocated renvoie les articles géolocalisés ; topic="" = tous les sujets.
+	ListGeolocated(ctx context.Context, topic string) ([]domain.Article, error)
 	Close() error
 }

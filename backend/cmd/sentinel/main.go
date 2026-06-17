@@ -14,6 +14,7 @@ import (
 
 	"github.com/teddyandria/sentinel/internal/api"
 	"github.com/teddyandria/sentinel/internal/config"
+	"github.com/teddyandria/sentinel/internal/domain"
 	"github.com/teddyandria/sentinel/internal/fetcher"
 	"github.com/teddyandria/sentinel/internal/geocoder"
 	"github.com/teddyandria/sentinel/internal/pipeline"
@@ -47,12 +48,16 @@ func run() error {
 	}
 	defer store.Close()
 
+	// Une source par topic : chaque NewsAPIFetcher ne récupère et ne tague que son sujet.
 	newsClient := newsapi.New(cfg.NewsAPIKey)
-	newsFetcher := fetcher.NewNewsAPIFetcher(newsClient, "technology", log)
+	fetchers := make([]fetcher.Fetcher, 0, len(domain.AllowedTopics))
+	for _, topic := range domain.AllowedTopics {
+		fetchers = append(fetchers, fetcher.NewNewsAPIFetcher(newsClient, topic, log))
+	}
 	geo := geocoder.NewStaticGeocoder(geocoder.DefaultCities())
 
 	// Le pipeline (fetch -> geocode -> store) est déclenché périodiquement par le scheduler.
-	pipe := pipeline.New(newsFetcher, geo, store, log)
+	pipe := pipeline.New(fetchers, geo, store, log)
 	sched := scheduler.New(cfg.FetchInterval, pipe.Run, log)
 	go sched.Start(ctx)
 

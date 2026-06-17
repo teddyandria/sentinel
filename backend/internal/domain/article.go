@@ -15,7 +15,9 @@ type Article struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"` // lien vers la source, ouvert au clic sur le marqueur
+	ImageURL    string    `json:"image_url"` // visuel de l'article (vide si absent), pour la card
 	Source      string    `json:"source"`
+	Topic       string    `json:"topic"` // sujet de veille (voir domain.AllowedTopics)
 	PublishedAt time.Time `json:"published_at"`
 
 	Location *Location `json:"location,omitempty"` // nil tant que l'article n'est pas géocodé
