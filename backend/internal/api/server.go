@@ -8,17 +8,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/teddyandria/sentinel/internal/rag"
 	"github.com/teddyandria/sentinel/internal/storage"
 )
 
 type Server struct {
 	store       storage.Store
+	rag         *rag.Service
 	mapboxToken string // exposé au frontend via /api/config
 	log         *slog.Logger
 }
 
-func NewServer(store storage.Store, mapboxToken string, log *slog.Logger) *Server {
-	return &Server{store: store, mapboxToken: mapboxToken, log: log}
+func NewServer(store storage.Store, ragSvc *rag.Service, mapboxToken string, log *slog.Logger) *Server {
+	return &Server{store: store, rag: ragSvc, mapboxToken: mapboxToken, log: log}
 }
 
 // Routes assemble l'API JSON (/api/*) et le service des fichiers statiques du frontend.
@@ -34,6 +36,7 @@ func (s *Server) Routes(webDir string) http.Handler {
 		r.Get("/config", s.handleConfig)
 		r.Get("/topics", s.handleTopics)
 		r.Get("/articles", s.handleListArticles)
+		r.Get("/ask", s.handleAsk)
 	})
 
 	fileServer := http.FileServer(http.Dir(webDir))

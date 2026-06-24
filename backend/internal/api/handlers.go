@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/teddyandria/sentinel/internal/domain"
 )
@@ -37,6 +38,24 @@ func (s *Server) handleListArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, articles)
+}
+
+// handleAsk : le cœur du RAG côté HTTP. ?q=... = la question de l'utilisateur.
+// Renvoie { answer, sources } : la réponse rédigée + les articles utilisés.
+func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
+	question := strings.TrimSpace(r.URL.Query().Get("q"))
+	if question == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "paramètre q requis"})
+		return
+	}
+
+	answer, err := s.rag.Ask(r.Context(), question, 5) // 5 articles sources
+	if err != nil {
+		s.log.Error("rag ask", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, answer)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

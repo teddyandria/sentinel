@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Article } from "../api";
+import { CardArticle } from "../api";
 
-// Card affichée au survol d'un marqueur. L'image n'apparaît que si l'article en
-// fournit une (et se masque proprement si l'URL casse).
-export function ArticleCard({ article }: { article: Article }) {
+// Card affichée au survol d'un point ou dans le panneau latéral. L'image
+// n'apparaît que si l'article en fournit une (et se masque si l'URL casse).
+export function ArticleCard({ article }: { article: CardArticle }) {
   return (
     <motion.article
       className="card"

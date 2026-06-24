@@ -127,7 +127,7 @@ body {
 
 /* Card brutalist-lite : bordure franche + ombre portée décalée (pas de flou). */
 .card {
-  width: 280px;
+  width: 100%;
   background: var(--bg);
   border: 2px solid var(--border);
   box-shadow: 5px 5px 0 var(--border);
@@ -190,4 +190,116 @@ body {
 
 .card-link:hover {
   background: var(--accent);
+}
+
+/* Panneau latéral : liste des articles d'un point/cluster cliqué. */
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 88vw;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 3px solid var(--border);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 2px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel-close {
+  padding: 0.1rem 0.45rem;
+  border: 2px solid var(--border);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  background: var(--accent);
+}
+
+.panel-list {
+  flex: 1; /* occupe la hauteur restante sous le header */
+  min-height: 0; /* indispensable pour que overflow-y scrolle dans un flex */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.9rem 0.9rem 1.2rem;
+  overflow-y: auto;
+}
+
+/* Les cards gardent leur hauteur naturelle : on scrolle au lieu de les écraser. */
+.panel-list .card {
+  flex-shrink: 0;
+}
+
+/* Zone sous le header : carte + panneaux (positionné pour ancrer les panneaux). */
+.content {
+  flex: 1;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+/* Barre de question (RAG) */
+.askbar {
+  display: flex;
+  flex: 1;
+  max-width: 440px;
+}
+
+.askbar-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--border);
+  border-right: none;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.askbar-input:focus {
+  outline: none;
+}
+
+.askbar-btn {
+  padding: 0.45rem 0.9rem;
+  border: 2px solid var(--border);
+  background: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.askbar-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Panneau de réponse RAG */
+.answer-text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.answer-sources-label {
+  margin-top: 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
 }

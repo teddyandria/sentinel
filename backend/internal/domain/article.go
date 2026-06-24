@@ -23,4 +23,8 @@ type Article struct {
 	Location *Location `json:"location,omitempty"` // nil tant que l'article n'est pas géocodé
 
 	Hash string `json:"-"` // empreinte de déduplication, non exposée dans l'API
+
+	// Embedding = "vecteur de sens" de l'article (vide tant que non indexé).
+	// Sert à la recherche RAG ; non exposé dans l'API.
+	Embedding []float32 `json:"-"`
 }

@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS articles (
     -- Empreinte unique pour la déduplication (ex: hash de l'URL).
     hash          TEXT        NOT NULL UNIQUE,
 
+    -- Vecteur de sens de l'article (JSON), calculé par le modèle d'embeddings.
+    -- NULL tant que l'article n'a pas été indexé pour la recherche (RAG).
+    embedding     TEXT,
+
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -18,9 +18,12 @@ import (
 	"github.com/teddyandria/sentinel/internal/fetcher"
 	"github.com/teddyandria/sentinel/internal/geocoder"
 	"github.com/teddyandria/sentinel/internal/pipeline"
+	"github.com/teddyandria/sentinel/internal/rag"
 	"github.com/teddyandria/sentinel/internal/scheduler"
 	"github.com/teddyandria/sentinel/internal/storage"
+	"github.com/teddyandria/sentinel/pkg/mapbox"
 	"github.com/teddyandria/sentinel/pkg/newsapi"
+	"github.com/teddyandria/sentinel/pkg/ollama"
 )
 
 func main() {
@@ -54,14 +57,20 @@ func run() error {
 	for _, topic := range domain.AllowedTopics {
 		fetchers = append(fetchers, fetcher.NewNewsAPIFetcher(newsClient, topic, log))
 	}
-	geo := geocoder.NewStaticGeocoder(geocoder.DefaultCities())
+	// Géocodage en 2 étapes : Ollama (LLM local) extrait le lieu, Mapbox le résout en coordonnées.
+	ollamaClient := ollama.New(cfg.OllamaURL, cfg.OllamaModel, cfg.OllamaAnswer, cfg.OllamaEmbed)
+	mapboxGeo := mapbox.NewGeocoder(cfg.MapboxToken)
+	geo := geocoder.NewLLMGeocoder(ollamaClient, mapboxGeo)
 
 	// Le pipeline (fetch -> geocode -> store) est déclenché périodiquement par le scheduler.
-	pipe := pipeline.New(fetchers, geo, store, log)
+	pipe := pipeline.New(fetchers, geo, ollamaClient, store, log)
 	sched := scheduler.New(cfg.FetchInterval, pipe.Run, log)
 	go sched.Start(ctx)
 
-	apiServer := api.NewServer(store, cfg.MapboxToken, log)
+	// Service RAG : même client Ollama (embeddings + génération) + le store.
+	ragSvc := rag.New(ollamaClient, ollamaClient, store)
+
+	apiServer := api.NewServer(store, ragSvc, cfg.MapboxToken, log)
 	httpSrv := &http.Server{
 		Addr:         cfg.HTTPAddr,
 		Handler:      apiServer.Routes(cfg.WebDir),

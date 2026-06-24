@@ -11,14 +11,28 @@ BACKEND  := backend
 FRONTEND := frontend
 BINARY   := bin/sentinel
 
-.PHONY: help run front front-install front-build build test lint tidy docker-up docker-down clean
+.PHONY: help run db-up reindex front front-install front-build build test lint tidy docker-up docker-down clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-run: ## Lance le backend (API + sert le front buildé depuis frontend/dist)
+run: db-up ## Lance le backend (démarre d'abord la base si besoin)
 	cd $(BACKEND) && go run ./cmd/sentinel
+
+reindex: db-up ## Calcule les vecteurs des articles sans embedding (recherche RAG)
+	cd $(BACKEND) && go run ./cmd/reindex
+
+db-up: ## Démarre Postgres (et Docker Desktop si éteint), attend qu'il soit prêt
+	@docker info >/dev/null 2>&1 || { echo "Démarrage de Docker Desktop..."; \
+		open -a Docker 2>/dev/null || open -a "Docker Desktop" 2>/dev/null; \
+		for i in $$(seq 1 45); do docker info >/dev/null 2>&1 && break; sleep 3; done; }
+	@docker compose up -d db
+	@printf "Attente de Postgres"; \
+	for i in $$(seq 1 20); do \
+		[ "$$(docker inspect -f '{{.State.Health.Status}}' sentinel2-db-1 2>/dev/null)" = "healthy" ] && { echo " OK"; break; }; \
+		printf "."; sleep 2; \
+	done
 
 front-install: ## Installe les dépendances npm du frontend
 	cd $(FRONTEND) && npm install

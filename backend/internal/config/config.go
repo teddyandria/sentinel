@@ -17,6 +17,10 @@ type Config struct {
 	LogLevel      string        // niveau de log : debug, info, warn, error
 	WebDir        string        // dossier du frontend statique servi par l'API
 	MapboxToken   string        // token public Mapbox (pk.*) transmis au frontend
+	OllamaURL     string        // URL du serveur Ollama local
+	OllamaModel   string        // modèle de géocodage (petit, fréquent)
+	OllamaAnswer  string        // modèle de rédaction RAG (plus gros, occasionnel)
+	OllamaEmbed   string        // modèle d'embeddings (texte -> vecteur, pour le RAG)
 }
 
 func Load() (Config, error) {
@@ -32,6 +36,10 @@ func Load() (Config, error) {
 		// Front buildé par Vite. En conteneur, on surcharge via WEB_DIR (ex: /app/web).
 		WebDir:      getEnv("WEB_DIR", "../frontend/dist"),
 		MapboxToken: getEnv("MAPBOX_TOKEN", ""),
+		OllamaURL:    getEnv("OLLAMA_URL", "http://localhost:11434"),
+		OllamaModel:  getEnv("OLLAMA_MODEL", "llama3.2:1b"),
+		OllamaAnswer: getEnv("OLLAMA_ANSWER_MODEL", "llama3.2:3b"),
+		OllamaEmbed:  getEnv("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
 	}
 
 	if cfg.NewsAPIKey == "" {
