@@ -21,9 +21,11 @@ import (
 	"github.com/teddyandria/sentinel/internal/rag"
 	"github.com/teddyandria/sentinel/internal/scheduler"
 	"github.com/teddyandria/sentinel/internal/storage"
+	"github.com/teddyandria/sentinel/pkg/groq"
 	"github.com/teddyandria/sentinel/pkg/mapbox"
 	"github.com/teddyandria/sentinel/pkg/newsapi"
 	"github.com/teddyandria/sentinel/pkg/ollama"
+	"github.com/teddyandria/sentinel/pkg/voyage"
 )
 
 func main() {
@@ -57,18 +59,37 @@ func run() error {
 	for _, topic := range domain.AllowedTopics {
 		fetchers = append(fetchers, fetcher.NewNewsAPIFetcher(newsClient, topic, log))
 	}
-	// Géocodage en 2 étapes : Ollama (LLM local) extrait le lieu, Mapbox le résout en coordonnées.
-	ollamaClient := ollama.New(cfg.OllamaURL, cfg.OllamaModel, cfg.OllamaAnswer, cfg.OllamaEmbed)
+	// Sélection du fournisseur LLM : "ollama" en dev (local, gratuit), "groq"
+	// en prod (cloud gratuit, mais sans API d'embeddings -> Voyage AI prend le relais).
+	var generator geocoder.Generator
+	var embedder pipeline.Embedder
+	var ragGenerator rag.Generator
+	var ragEmbedder rag.Embedder
+
+	switch cfg.LLMProvider {
+	case "groq":
+		log.Info("fournisseur LLM : groq (prod)")
+		groqClient := groq.New(cfg.GroqAPIKey, cfg.GroqModel, cfg.GroqAnswer)
+		voyageClient := voyage.New(cfg.VoyageAPIKey, cfg.VoyageModel)
+		generator, ragGenerator = groqClient, groqClient
+		embedder, ragEmbedder = voyageClient, voyageClient
+	default:
+		log.Info("fournisseur LLM : ollama (dev, local)")
+		ollamaClient := ollama.New(cfg.OllamaURL, cfg.OllamaModel, cfg.OllamaAnswer, cfg.OllamaEmbed)
+		generator, ragGenerator = ollamaClient, ollamaClient
+		embedder, ragEmbedder = ollamaClient, ollamaClient
+	}
+
+	// Géocodage en 2 étapes : le LLM extrait le lieu, Mapbox le résout en coordonnées.
 	mapboxGeo := mapbox.NewGeocoder(cfg.MapboxToken)
-	geo := geocoder.NewLLMGeocoder(ollamaClient, mapboxGeo)
+	geo := geocoder.NewLLMGeocoder(generator, mapboxGeo)
 
 	// Le pipeline (fetch -> geocode -> store) est déclenché périodiquement par le scheduler.
-	pipe := pipeline.New(fetchers, geo, ollamaClient, store, log)
+	pipe := pipeline.New(fetchers, geo, embedder, store, log)
 	sched := scheduler.New(cfg.FetchInterval, pipe.Run, log)
 	go sched.Start(ctx)
 
-	// Service RAG : même client Ollama (embeddings + génération) + le store.
-	ragSvc := rag.New(ollamaClient, ollamaClient, store)
+	ragSvc := rag.New(ragEmbedder, ragGenerator, store)
 
 	apiServer := api.NewServer(store, ragSvc, cfg.MapboxToken, log)
 	httpSrv := &http.Server{

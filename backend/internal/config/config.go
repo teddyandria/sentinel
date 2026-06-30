@@ -21,6 +21,13 @@ type Config struct {
 	OllamaModel   string        // modèle de géocodage (petit, fréquent)
 	OllamaAnswer  string        // modèle de rédaction RAG (plus gros, occasionnel)
 	OllamaEmbed   string        // modèle d'embeddings (texte -> vecteur, pour le RAG)
+
+	LLMProvider  string // "ollama" (dev, local) ou "groq" (prod, gratuit)
+	GroqAPIKey   string
+	GroqModel    string // modèle de géocodage Groq (rapide/économique)
+	GroqAnswer   string // modèle de rédaction RAG Groq
+	VoyageAPIKey string // embeddings en prod (Groq n'en fournit pas)
+	VoyageModel  string
 }
 
 func Load() (Config, error) {
@@ -40,6 +47,13 @@ func Load() (Config, error) {
 		OllamaModel:  getEnv("OLLAMA_MODEL", "llama3.2:1b"),
 		OllamaAnswer: getEnv("OLLAMA_ANSWER_MODEL", "llama3.2:3b"),
 		OllamaEmbed:  getEnv("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
+
+		LLMProvider:  getEnv("LLM_PROVIDER", "ollama"),
+		GroqAPIKey:   getEnv("GROQ_API_KEY", ""),
+		GroqModel:    getEnv("GROQ_MODEL", "llama-3.1-8b-instant"),
+		GroqAnswer:   getEnv("GROQ_ANSWER_MODEL", "llama-3.3-70b-versatile"),
+		VoyageAPIKey: getEnv("VOYAGE_API_KEY", ""),
+		VoyageModel:  getEnv("VOYAGE_MODEL", "voyage-3.5-lite"),
 	}
 
 	if cfg.NewsAPIKey == "" {
@@ -47,6 +61,14 @@ func Load() (Config, error) {
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("config: DATABASE_URL est obligatoire")
+	}
+	if cfg.LLMProvider == "groq" {
+		if cfg.GroqAPIKey == "" {
+			return Config{}, fmt.Errorf("config: GROQ_API_KEY est obligatoire quand LLM_PROVIDER=groq")
+		}
+		if cfg.VoyageAPIKey == "" {
+			return Config{}, fmt.Errorf("config: VOYAGE_API_KEY est obligatoire quand LLM_PROVIDER=groq")
+		}
 	}
 	return cfg, nil
 }

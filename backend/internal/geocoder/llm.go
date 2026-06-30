@@ -7,18 +7,24 @@ import (
 
 	"github.com/teddyandria/sentinel/internal/domain"
 	"github.com/teddyandria/sentinel/pkg/mapbox"
-	"github.com/teddyandria/sentinel/pkg/ollama"
 )
 
-// LLMGeocoder géocode en 2 étapes : un petit LLM (Ollama) extrait le LIEU dont
-// parle l'article, puis Mapbox traduit ce lieu en coordonnées exactes.
+// Generator est la "prise" attendue côté LLM : extraire un lieu en JSON.
+// Ollama et Anthropic l'implémentent tous les deux, sans que ce package
+// ait besoin de connaître l'un ou l'autre concrètement.
+type Generator interface {
+	GenerateJSON(ctx context.Context, prompt string) (string, error)
+}
+
+// LLMGeocoder géocode en 2 étapes : un LLM extrait le LIEU dont parle
+// l'article, puis Mapbox traduit ce lieu en coordonnées exactes.
 // Chaque outil fait ce qu'il sait faire : compréhension vs coordonnées fiables.
 type LLMGeocoder struct {
-	llm    *ollama.Client
+	llm    Generator
 	mapbox *mapbox.Geocoder
 }
 
-func NewLLMGeocoder(llm *ollama.Client, mb *mapbox.Geocoder) *LLMGeocoder {
+func NewLLMGeocoder(llm Generator, mb *mapbox.Geocoder) *LLMGeocoder {
 	return &LLMGeocoder{llm: llm, mapbox: mb}
 }
 
