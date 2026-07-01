@@ -2,12 +2,22 @@ package storage
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
+	"fmt"
+	"sort"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/teddyandria/sentinel/internal/domain"
 )
+
+// migrations est embarqué dans le binaire : utile en prod (ex. Render) où la
+// base managée n'a pas d'équivalent à docker-entrypoint-initdb.d pour exécuter
+// les .sql automatiquement à la création du volume.
+//
+//go:embed migrations/*.sql
+var migrations embed.FS
 
 type PostgresStore struct {
 	pool *pgxpool.Pool
@@ -23,7 +33,36 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 		pool.Close()
 		return nil, err
 	}
+	if err := runMigrations(ctx, pool); err != nil {
+		pool.Close()
+		return nil, err
+	}
 	return &PostgresStore{pool: pool}, nil
+}
+
+// runMigrations exécute les .sql embarqués dans l'ordre alphabétique. Chaque
+// fichier doit être idempotent (IF NOT EXISTS) : on les rejoue à chaque boot.
+func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
+	entries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		return fmt.Errorf("migrations: lecture du dossier: %w", err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		sqlBytes, err := migrations.ReadFile("migrations/" + name)
+		if err != nil {
+			return fmt.Errorf("migrations: lecture de %s: %w", name, err)
+		}
+		if _, err := pool.Exec(ctx, string(sqlBytes)); err != nil {
+			return fmt.Errorf("migrations: exécution de %s: %w", name, err)
+		}
+	}
+	return nil
 }
 
 // Save insère un article ; ON CONFLICT (hash) DO NOTHING ignore les doublons.

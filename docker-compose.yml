@@ -13,7 +13,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Les fichiers .sql ici sont exécutés automatiquement à la 1ère initialisation.
-      - ./backend/migrations:/docker-entrypoint-initdb.d
+      # (même dossier qu'embarque le binaire via go:embed pour les rejouer en prod).
+      - ./backend/internal/storage/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sentinel}"]
       interval: 5s
