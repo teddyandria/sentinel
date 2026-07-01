@@ -28,6 +28,46 @@ func New(fetchers []fetcher.Fetcher, g geocoder.Geocoder, e Embedder, s storage.
 	return &Pipeline{fetchers: fetchers, geocoder: g, embedder: e, store: s, log: log}
 }
 
+// Indexer calcule et stocke les embeddings manquants en différé, par petits
+// lots espacés, pour rester sous le rate limit de l'API d'embeddings.
+type Indexer struct {
+	embedder  Embedder
+	store     storage.Store
+	log       *slog.Logger
+	batchSize int
+	pause     time.Duration
+}
+
+func NewIndexer(e Embedder, s storage.Store, log *slog.Logger) *Indexer {
+	return &Indexer{embedder: e, store: s, log: log, batchSize: 10, pause: time.Second}
+}
+
+func (ix *Indexer) Run(ctx context.Context) error {
+	articles, err := ix.store.ArticlesToEmbed(ctx, ix.batchSize)
+	if err != nil {
+		return err
+	}
+	for _, a := range articles {
+		vec, err := ix.embedder.Embeddings(ctx, a.Title+" "+a.Description)
+		if err != nil {
+			ix.log.Warn("embedding différé échoué", "id", a.ID, "err", err)
+			continue
+		}
+		if err := ix.store.SaveEmbedding(ctx, a.ID, vec); err != nil {
+			ix.log.Warn("sauvegarde embedding échouée", "id", a.ID, "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(ix.pause):
+		}
+	}
+	if len(articles) > 0 {
+		ix.log.Info("indexation différée", "indexés", len(articles))
+	}
+	return nil
+}
+
 // Run exécute une passe d'ingestion sur toutes les sources. Une source ou un
 // article en erreur n'interrompt pas le reste du traitement.
 func (p *Pipeline) Run(ctx context.Context) error {

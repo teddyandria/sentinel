@@ -89,6 +89,12 @@ func run() error {
 	sched := scheduler.New(cfg.FetchInterval, pipe.Run, log)
 	go sched.Start(ctx)
 
+	// Indexer différé : calcule les embeddings manquants par lot de 10, toutes les minutes.
+	// Séparé du pipeline pour ne pas saturer le rate limit de l'API d'embeddings.
+	indexer := pipeline.NewIndexer(ragEmbedder, store, log)
+	indexSched := scheduler.New(time.Minute, indexer.Run, log)
+	go indexSched.Start(ctx)
+
 	ragSvc := rag.New(ragEmbedder, ragGenerator, store)
 
 	apiServer := api.NewServer(store, ragSvc, cfg.MapboxToken, log)

@@ -18,5 +18,9 @@ type Store interface {
 	ListGeolocated(ctx context.Context, topic string) ([]domain.Article, error)
 	// ListEmbedded charge les articles indexés (article + vecteur) pour la recherche RAG.
 	ListEmbedded(ctx context.Context) ([]EmbeddedArticle, error)
+	// ArticlesToEmbed renvoie les articles sans vecteur (à indexer), par lots.
+	ArticlesToEmbed(ctx context.Context, limit int) ([]domain.Article, error)
+	// SaveEmbedding enregistre le vecteur d'un article déjà en base.
+	SaveEmbedding(ctx context.Context, id int64, vec []float32) error
 	Close() error
 }
