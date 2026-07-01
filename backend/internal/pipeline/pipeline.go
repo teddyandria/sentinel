@@ -4,6 +4,7 @@ package pipeline
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/teddyandria/sentinel/internal/fetcher"
 	"github.com/teddyandria/sentinel/internal/geocoder"
@@ -73,6 +74,8 @@ func (p *Pipeline) Run(ctx context.Context) error {
 				continue
 			}
 			saved++
+			// Pause entre chaque article pour respecter le rate limit des APIs (Groq, Voyage).
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
