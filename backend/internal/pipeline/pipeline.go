@@ -19,13 +19,12 @@ type Embedder interface {
 type Pipeline struct {
 	fetchers []fetcher.Fetcher
 	geocoder geocoder.Geocoder
-	embedder Embedder
 	store    storage.Store
 	log      *slog.Logger
 }
 
-func New(fetchers []fetcher.Fetcher, g geocoder.Geocoder, e Embedder, s storage.Store, log *slog.Logger) *Pipeline {
-	return &Pipeline{fetchers: fetchers, geocoder: g, embedder: e, store: s, log: log}
+func New(fetchers []fetcher.Fetcher, g geocoder.Geocoder, s storage.Store, log *slog.Logger) *Pipeline {
+	return &Pipeline{fetchers: fetchers, geocoder: g, store: s, log: log}
 }
 
 // Indexer calcule et stocke les embeddings manquants en différé, par petits
@@ -102,19 +101,12 @@ func (p *Pipeline) Run(ctx context.Context) error {
 				geocoded++
 			}
 
-			// Indexation : on calcule le vecteur de l'article pour la recherche RAG.
-			if vec, err := p.embedder.Embeddings(ctx, a.Title+" "+a.Description); err != nil {
-				p.log.Warn("embedding échoué", "url", a.URL, "err", err)
-			} else {
-				a.Embedding = vec
-			}
-
 			if err := p.store.Save(ctx, a); err != nil {
 				p.log.Error("sauvegarde échouée", "url", a.URL, "err", err)
 				continue
 			}
 			saved++
-			// Pause entre chaque article pour respecter le rate limit des APIs (Groq, Voyage).
+			// Pause entre chaque article pour respecter le rate limit de Groq (géocodage).
 			time.Sleep(200 * time.Millisecond)
 		}
 	}

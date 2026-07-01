@@ -62,7 +62,6 @@ func run() error {
 	// Sélection du fournisseur LLM : "ollama" en dev (local, gratuit), "groq"
 	// en prod (cloud gratuit, mais sans API d'embeddings -> Voyage AI prend le relais).
 	var generator geocoder.Generator
-	var embedder pipeline.Embedder
 	var ragGenerator rag.Generator
 	var ragEmbedder rag.Embedder
 
@@ -72,12 +71,12 @@ func run() error {
 		groqClient := groq.New(cfg.GroqAPIKey, cfg.GroqModel, cfg.GroqAnswer)
 		voyageClient := voyage.New(cfg.VoyageAPIKey, cfg.VoyageModel)
 		generator, ragGenerator = groqClient, groqClient
-		embedder, ragEmbedder = voyageClient, voyageClient
+		ragEmbedder = voyageClient
 	default:
 		log.Info("fournisseur LLM : ollama (dev, local)")
 		ollamaClient := ollama.New(cfg.OllamaURL, cfg.OllamaModel, cfg.OllamaAnswer, cfg.OllamaEmbed)
 		generator, ragGenerator = ollamaClient, ollamaClient
-		embedder, ragEmbedder = ollamaClient, ollamaClient
+		ragEmbedder = ollamaClient
 	}
 
 	// Géocodage en 2 étapes : le LLM extrait le lieu, Mapbox le résout en coordonnées.
@@ -85,7 +84,7 @@ func run() error {
 	geo := geocoder.NewLLMGeocoder(generator, mapboxGeo)
 
 	// Le pipeline (fetch -> geocode -> store) est déclenché périodiquement par le scheduler.
-	pipe := pipeline.New(fetchers, geo, embedder, store, log)
+	pipe := pipeline.New(fetchers, geo, store, log)
 	sched := scheduler.New(cfg.FetchInterval, pipe.Run, log)
 	go sched.Start(ctx)
 
