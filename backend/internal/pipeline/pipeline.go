@@ -38,7 +38,7 @@ type Indexer struct {
 }
 
 func NewIndexer(e Embedder, s storage.Store, log *slog.Logger) *Indexer {
-	return &Indexer{embedder: e, store: s, log: log, batchSize: 10, pause: time.Second}
+	return &Indexer{embedder: e, store: s, log: log, batchSize: 2, pause: 25 * time.Second}
 }
 
 func (ix *Indexer) Run(ctx context.Context) error {
