@@ -107,7 +107,7 @@ func (p *Pipeline) Run(ctx context.Context) error {
 			}
 			saved++
 			// Pause entre chaque article pour respecter le rate limit de Groq (géocodage).
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(2 * time.Second)
 		}
 	}
 
